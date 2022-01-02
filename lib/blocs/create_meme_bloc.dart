@@ -34,14 +34,48 @@ class CreateMemeBloc {
   }
 
   Stream<List<MemeText>> observeMemeTexts() => memeTextSubject
-      .distinct((prev, next) => ListEquality().equals(prev, next));
+      .distinct((prev, next) => const ListEquality().equals(prev, next));
 
   Stream<MemeText?> observeSelectedMemeText() =>
       selectedMemeTextSubject.distinct();
 
+  Stream<List<MemeTextWithSelection>> observeMemeTextWithSelection() =>
+      Rx.combineLatest2<List<MemeText>, MemeText?, List<MemeTextWithSelection>>(
+        observeMemeTexts(),
+        observeSelectedMemeText(),
+        (memeTexts, selectedMemeText) {
+          return memeTexts.map((memeText) {
+            return MemeTextWithSelection(memeText: memeText, selected: memeText.id == selectedMemeText?.id);
+          }).toList();
+        },
+      );
+
   void dispose() {
     memeTextSubject.close();
     selectedMemeTextSubject.close();
+  }
+}
+
+class MemeTextWithSelection {
+  final MemeText memeText;
+  final bool selected;
+
+  MemeTextWithSelection({required this.memeText, required this.selected});
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MemeTextWithSelection &&
+          runtimeType == other.runtimeType &&
+          memeText == other.memeText &&
+          selected == other.selected;
+
+  @override
+  int get hashCode => memeText.hashCode ^ selected.hashCode;
+
+  @override
+  String toString() {
+    return 'MemeTextWithSelection{memeText: $memeText, selected: $selected}';
   }
 }
 
@@ -60,7 +94,11 @@ class MemeText {
 
   @override
   bool operator ==(Object other) {
-    return identical(this, other) || other is MemeText && runtimeType == other.runtimeType && id == other.id && text == other.text;
+    return identical(this, other) ||
+        other is MemeText &&
+            runtimeType == other.runtimeType &&
+            id == other.id &&
+            text == other.text;
   }
 
   @override
