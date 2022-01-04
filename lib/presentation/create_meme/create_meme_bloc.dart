@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:memogenerator/data/models/meme.dart';
@@ -9,6 +10,7 @@ import 'package:memogenerator/presentation/create_meme/models/meme_text_offset.d
 import 'package:memogenerator/presentation/create_meme/models/meme_text.dart';
 import 'package:memogenerator/presentation/create_meme/models/meme_text_with_offset.dart';
 import 'package:memogenerator/presentation/create_meme/models/meme_text_with_selection.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:collection/collection.dart';
 import 'package:uuid/uuid.dart';
@@ -20,6 +22,7 @@ class CreateMemeBloc {
       BehaviorSubject<List<MemeTextOffset>>.seeded(<MemeTextOffset>[]);
   final newMemeTextOffsetSubject =
       BehaviorSubject<MemeTextOffset?>.seeded(null);
+  final memePathSubject = BehaviorSubject<String?>.seeded(null);
 
   StreamSubscription<MemeTextOffset?>? newMemeTextOffsetSubscription;
   StreamSubscription<bool>? saveMemeSubscription;
@@ -27,34 +30,39 @@ class CreateMemeBloc {
 
   final String id;
 
-  CreateMemeBloc({final String? id}) : id = id ?? const Uuid().v4() {
+  CreateMemeBloc({
+    final String? id,
+    final String? selectedMemePath,
+  }) : id = id ?? const Uuid().v4() {
+    memePathSubject.add(selectedMemePath);
     _subscribeToNewMemTextOffset();
     _subscribeToExistentMeme();
   }
 
   StreamSubscription<Meme?> _subscribeToExistentMeme() {
     return existentMemeSubscription =
-      MemesRepository.getInstance().getMeme(this.id).asStream().listen(
-    (meme) {
-      if (meme == null) {
-        return;
-      }
-      final memeTexts = meme.texts.map((textWithPosition) {
-        return MemeText(id: textWithPosition.id, text: textWithPosition.text);
-      }).toList();
-      final memeTExtOffsets = meme.texts.map((textWithPosition) {
-        return MemeTextOffset(
-          id: textWithPosition.id,
-          offset: Offset(
-              textWithPosition.position.left, textWithPosition.position.top),
-        );
-      }).toList();
-      memeTextSubject.add(memeTexts);
-      memeTextOffsetSubject.add(memeTExtOffsets);
-    },
-    onError: (error, stackTrace) =>
-        print('Error in existentMemeSubscription: $error, $stackTrace'),
-  );
+        MemesRepository.getInstance().getMeme(this.id).asStream().listen(
+      (meme) {
+        if (meme == null) {
+          return;
+        }
+        final memeTexts = meme.texts.map((textWithPosition) {
+          return MemeText(id: textWithPosition.id, text: textWithPosition.text);
+        }).toList();
+        final memeTextOffsets = meme.texts.map((textWithPosition) {
+          return MemeTextOffset(
+            id: textWithPosition.id,
+            offset: Offset(
+                textWithPosition.position.left, textWithPosition.position.top),
+          );
+        }).toList();
+        memeTextSubject.add(memeTexts);
+        memeTextOffsetSubject.add(memeTextOffsets);
+        memePathSubject.add(meme.memePath);
+      },
+      onError: (error, stackTrace) =>
+          print('Error in existentMemeSubscription: $error, $stackTrace'),
+    );
   }
 
   void saveMeme() {
@@ -75,15 +83,40 @@ class CreateMemeBloc {
         position: position,
       );
     }).toList();
-    final meme = Meme(id: id, texts: textsWithPositions);
+
     saveMemeSubscription =
-        MemesRepository.getInstance().addToMemes(meme).asStream().listen(
+        _saveMemeInternal(textsWithPositions).asStream().listen(
       (saved) {
         print('Meme saved: $saved');
       },
       onError: (error, stackTrace) =>
           print('Error in saveMemeSubscription: $error, $stackTrace'),
     );
+  }
+
+  Future<bool> _saveMemeInternal(
+      final List<TextWithPosition> textWithPositions) async {
+    final imagePath = memePathSubject.value;
+    if (imagePath == null) {
+      final meme = Meme(
+        id: id,
+        texts: textWithPositions,
+      );
+      return MemesRepository.getInstance().addToMemes(meme);
+    }
+    final docsPath = await getApplicationDocumentsDirectory();
+    final memePath = "${docsPath.absolute.path}${Platform.pathSeparator}memes";
+    await Directory(memePath).create(recursive: true);
+    final imageName = imagePath.split(Platform.pathSeparator).last;
+    final newImagePath = '$memePath${Platform.pathSeparator}$imageName';
+    final tempFile = File(imagePath);
+    await tempFile.copy(newImagePath);
+    final meme = Meme(
+      id: id,
+      texts: textWithPositions,
+      memePath: memePathSubject.value,
+    );
+    return MemesRepository.getInstance().addToMemes(meme);
   }
 
   void _subscribeToNewMemTextOffset() {
@@ -145,6 +178,8 @@ class CreateMemeBloc {
     selectedMemeTextSubject.add(null);
   }
 
+  Stream<String?> observeMemePath() => memePathSubject.distinct();
+
   Stream<List<MemeText>> observeMemeTexts() => memeTextSubject
       .distinct((prev, next) => const ListEquality().equals(prev, next));
 
@@ -192,5 +227,6 @@ class CreateMemeBloc {
     newMemeTextOffsetSubscription?.cancel();
     saveMemeSubscription?.cancel();
     existentMemeSubscription?.cancel();
+    memePathSubject.close();
   }
 }

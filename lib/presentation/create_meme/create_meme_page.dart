@@ -1,7 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:memogenerator/presentation/create_meme/create_meme_bloc.dart';
 import 'package:memogenerator/presentation/create_meme/models/meme_text.dart';
-import 'package:memogenerator/presentation/create_meme/models/meme_text_with_offset.dart';
 import 'package:memogenerator/presentation/create_meme/models/meme_text_with_offset.dart';
 import 'package:memogenerator/presentation/create_meme/models/meme_text_with_selection.dart';
 import 'package:memogenerator/resources/app_colors.dart';
@@ -9,8 +10,13 @@ import 'package:provider/provider.dart';
 
 class CreateMemePage extends StatefulWidget {
   final String? id;
+  final String? selectedMemePath;
 
-  const CreateMemePage({Key? key, this.id}) : super(key: key);
+  const CreateMemePage({
+    Key? key,
+    this.id,
+    this.selectedMemePath,
+  }) : super(key: key);
 
   @override
   _CreateMemePageState createState() => _CreateMemePageState();
@@ -22,7 +28,8 @@ class _CreateMemePageState extends State<CreateMemePage> {
   @override
   void initState() {
     super.initState();
-    bloc = CreateMemeBloc(id: widget.id);
+    bloc = CreateMemeBloc(
+        id: widget.id, selectedMemePath: widget.selectedMemePath);
   }
 
   @override
@@ -258,26 +265,40 @@ class MemeCanvasWidget extends StatelessWidget {
         alignment: Alignment.topCenter,
         child: AspectRatio(
           aspectRatio: 1,
-          child: Container(
-            color: Colors.white,
-            child: StreamBuilder<List<MemeTextWithOffset>>(
-              initialData: const <MemeTextWithOffset>[],
-              stream: bloc.observeMemeTextWithOffset(),
-              builder: (context, snapshot) {
-                final memeTextWithOffset =
-                    snapshot.hasData ? snapshot.data! : const <MemeTextWithOffset>[];
-                return LayoutBuilder(builder: (context, constraints) {
-                  return Stack(
-                    children: memeTextWithOffset.map((memeText) {
-                      return DraggableMemeText(
-                        memeTextWithOffset: memeText,
-                        parentConstraints: constraints,
-                      );
-                    }).toList(),
-                  );
-                });
-              },
-            ),
+          child: Stack(
+            children: [
+              StreamBuilder<String?>(
+                stream: bloc.observeMemePath(),
+                builder: (context, snapshot) {
+                  final path = snapshot.hasData ? snapshot.data : null;
+                  if (path == null) {
+                    return Container(
+                      color: Colors.white,
+                    );
+                  }
+                  return Image.file(File(path));
+                }
+              ),
+              StreamBuilder<List<MemeTextWithOffset>>(
+                initialData: const <MemeTextWithOffset>[],
+                stream: bloc.observeMemeTextWithOffset(),
+                builder: (context, snapshot) {
+                  final memeTextWithOffset = snapshot.hasData
+                      ? snapshot.data!
+                      : const <MemeTextWithOffset>[];
+                  return LayoutBuilder(builder: (context, constraints) {
+                    return Stack(
+                      children: memeTextWithOffset.map((memeText) {
+                        return DraggableMemeText(
+                          memeTextWithOffset: memeText,
+                          parentConstraints: constraints,
+                        );
+                      }).toList(),
+                    );
+                  });
+                },
+              ),
+            ],
           ),
         ),
       ),
@@ -304,12 +325,13 @@ class _DraggableMemeTextState extends State<DraggableMemeText> {
   late double left;
   final double padding = 8;
 
-
   @override
   void initState() {
     super.initState();
-    top = widget.memeTextWithOffset.offset?.dy ?? widget.parentConstraints.maxHeight / 2;
-    left = widget.memeTextWithOffset.offset?.dx ?? widget.parentConstraints.maxWidth / 3;
+    top = widget.memeTextWithOffset.offset?.dy ??
+        widget.parentConstraints.maxHeight / 2;
+    left = widget.memeTextWithOffset.offset?.dx ??
+        widget.parentConstraints.maxWidth / 3;
   }
 
   @override
@@ -326,7 +348,8 @@ class _DraggableMemeTextState extends State<DraggableMemeText> {
           setState(() {
             left = calculateLeft(details);
             top = calculateTop(details);
-            bloc.changeMemeTextOffset(widget.memeTextWithOffset.id, Offset(left, top));
+            bloc.changeMemeTextOffset(
+                widget.memeTextWithOffset.id, Offset(left, top));
           });
         },
         child: StreamBuilder<MemeText?>(

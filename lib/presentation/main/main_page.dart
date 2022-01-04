@@ -37,10 +37,16 @@ class _MainPageState extends State<MainPage> {
           ),
         ),
         floatingActionButton: FloatingActionButton.extended(
-          onPressed: () {
+          onPressed: () async {
+            final selectedMemePath = await bloc.selectMeme();
+            if (selectedMemePath == null) {
+              return;
+            }
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => CreateMemePage(),
+                builder: (_) => CreateMemePage(
+                  selectedMemePath: selectedMemePath,
+                ),
               ),
             );
           },

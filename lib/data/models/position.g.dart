@@ -7,8 +7,8 @@ part of 'position.dart';
 // **************************************************************************
 
 Position _$PositionFromJson(Map<String, dynamic> json) => Position(
-      top: (json['top'] as num).toDouble(),
       left: (json['left'] as num).toDouble(),
+      top: (json['top'] as num).toDouble(),
     );
 
 Map<String, dynamic> _$PositionToJson(Position instance) => <String, dynamic>{
