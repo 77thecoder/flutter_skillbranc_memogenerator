@@ -7,6 +7,7 @@ import 'package:memogenerator/presentation/create_meme/models/meme_text_with_off
 import 'package:memogenerator/presentation/create_meme/models/meme_text_with_selection.dart';
 import 'package:memogenerator/resources/app_colors.dart';
 import 'package:provider/provider.dart';
+import 'package:screenshot/screenshot.dart';
 
 class CreateMemePage extends StatefulWidget {
   final String? id;
@@ -50,6 +51,13 @@ class _CreateMemePageState extends State<CreateMemePage> {
           title: const Text('Создаем мем'),
           bottom: const EditTextBar(),
           actions: [
+            GestureDetector(
+              onTap: () => bloc.shareMeme(),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.0),
+                child: Icon(Icons.share, color: AppColors.darkGrey),
+              ),
+            ),
             GestureDetector(
               onTap: () => bloc.saveMeme(),
               child: const Padding(
@@ -167,7 +175,7 @@ class _CreateMemePageContentState extends State<CreateMemePageContent> {
           width: double.infinity,
           color: AppColors.darkGrey,
         ),
-        Expanded(
+        const Expanded(
           child: BottomList(),
         ),
       ],
@@ -269,40 +277,51 @@ class MemeCanvasWidget extends StatelessWidget {
         alignment: Alignment.topCenter,
         child: AspectRatio(
           aspectRatio: 1,
-          child: Stack(
-            children: [
-              StreamBuilder<String?>(
-                  stream: bloc.observeMemePath(),
-                  builder: (context, snapshot) {
-                    final path = snapshot.hasData ? snapshot.data : null;
-                    if (path == null) {
-                      return Container(
-                        color: Colors.white,
-                      );
-                    }
-                    return Image.file(File(path));
-                  }),
-              StreamBuilder<List<MemeTextWithOffset>>(
-                initialData: const <MemeTextWithOffset>[],
-                stream: bloc.observeMemeTextWithOffset(),
-                builder: (context, snapshot) {
-                  final memeTextWithOffset = snapshot.hasData
-                      ? snapshot.data!
-                      : const <MemeTextWithOffset>[];
-                  return LayoutBuilder(builder: (context, constraints) {
-                    return Stack(
-                      children: memeTextWithOffset.map((memeText) {
-                        return DraggableMemeText(
-                          memeTextWithOffset: memeText,
-                          parentConstraints: constraints,
-                        );
-                      }).toList(),
-                    );
-                  });
-                },
-              ),
-            ],
-          ),
+          child: StreamBuilder<ScreenshotController>(
+              stream: bloc.observeScreenshotController(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const SizedBox.shrink();
+                }
+                return Screenshot(
+                  controller: snapshot.requireData,
+                  child: Stack(
+                    children: [
+                      StreamBuilder<String?>(
+                          stream: bloc.observeMemePath(),
+                          builder: (context, snapshot) {
+                            final path =
+                                snapshot.hasData ? snapshot.data : null;
+                            if (path == null) {
+                              return Container(
+                                color: Colors.white,
+                              );
+                            }
+                            return Image.file(File(path));
+                          }),
+                      StreamBuilder<List<MemeTextWithOffset>>(
+                        initialData: const <MemeTextWithOffset>[],
+                        stream: bloc.observeMemeTextWithOffset(),
+                        builder: (context, snapshot) {
+                          final memeTextWithOffset = snapshot.hasData
+                              ? snapshot.data!
+                              : const <MemeTextWithOffset>[];
+                          return LayoutBuilder(builder: (context, constraints) {
+                            return Stack(
+                              children: memeTextWithOffset.map((memeText) {
+                                return DraggableMemeText(
+                                  memeTextWithOffset: memeText,
+                                  parentConstraints: constraints,
+                                );
+                              }).toList(),
+                            );
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              }),
         ),
       ),
     );
