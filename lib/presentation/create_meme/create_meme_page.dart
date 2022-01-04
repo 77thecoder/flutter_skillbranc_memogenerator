@@ -238,14 +238,18 @@ class BottomMemeText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      alignment: Alignment.centerLeft,
-      color: item.selected ? AppColors.darkGrey16 : null,
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Text(
-        item.memeText.text,
-        style: const TextStyle(color: AppColors.darkGrey, fontSize: 16),
+    final bloc = Provider.of<CreateMemeBloc>(context, listen: false);
+    return GestureDetector(
+      onTap: () => bloc.selectMemeText(item.memeText.id),
+      child: Container(
+        alignment: Alignment.centerLeft,
+        color: item.selected ? AppColors.darkGrey16 : Colors.white,
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Text(
+          item.memeText.text,
+          style: const TextStyle(color: AppColors.darkGrey, fontSize: 16),
+        ),
       ),
     );
   }
@@ -268,17 +272,16 @@ class MemeCanvasWidget extends StatelessWidget {
           child: Stack(
             children: [
               StreamBuilder<String?>(
-                stream: bloc.observeMemePath(),
-                builder: (context, snapshot) {
-                  final path = snapshot.hasData ? snapshot.data : null;
-                  if (path == null) {
-                    return Container(
-                      color: Colors.white,
-                    );
-                  }
-                  return Image.file(File(path));
-                }
-              ),
+                  stream: bloc.observeMemePath(),
+                  builder: (context, snapshot) {
+                    final path = snapshot.hasData ? snapshot.data : null;
+                    if (path == null) {
+                      return Container(
+                        color: Colors.white,
+                      );
+                    }
+                    return Image.file(File(path));
+                  }),
               StreamBuilder<List<MemeTextWithOffset>>(
                 initialData: const <MemeTextWithOffset>[],
                 stream: bloc.observeMemeTextWithOffset(),
@@ -332,6 +335,15 @@ class _DraggableMemeTextState extends State<DraggableMemeText> {
         widget.parentConstraints.maxHeight / 2;
     left = widget.memeTextWithOffset.offset?.dx ??
         widget.parentConstraints.maxWidth / 3;
+    if (widget.memeTextWithOffset.offset == null) {
+      WidgetsBinding.instance?.addPostFrameCallback((timeStamp) {
+        final bloc = Provider.of<CreateMemeBloc>(context, listen: false);
+        bloc.changeMemeTextOffset(
+          widget.memeTextWithOffset.id,
+          Offset(left, top),
+        );
+      });
+    }
   }
 
   @override
