@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:memogenerator/data/models/meme.dart';
 import 'package:memogenerator/data/models/position.dart';
 import 'package:memogenerator/data/models/text_with_position.dart';
@@ -259,6 +260,26 @@ class CreateMemeBloc {
     final updatedMemeTexts = [...memeTextSubject.value];
     updatedMemeTexts.removeWhere((memeText) => memeText.id == textId);
     memeTextSubject.add(updatedMemeTexts);
+  }
+
+  Future<bool> isAllSaved() async {
+    final savedMeme = await MemesRepository.getInstance().getMeme(id);
+    if (savedMeme == null) {
+      return false;
+    }
+    final savedMemeTexts = savedMeme.texts.map((textWithPosition) {
+      return MemeText.createFromWithPosition(textWithPosition);
+    }).toList();
+    final savedMemeTextOffsets = savedMeme.texts.map((textWithPosition) {
+      return MemeTextOffset(
+          id: textWithPosition.id,
+          offset: Offset(
+            textWithPosition.position.left,
+            textWithPosition.position.top,
+          ));
+    }).toList();
+    return const DeepCollectionEquality.unordered().equals(savedMemeTexts, memeTextSubject.value) &&
+        const DeepCollectionEquality.unordered().equals(savedMemeTextOffsets, memeTextOffsetSubject.value);
   }
 
   void dispose() {
