@@ -11,6 +11,8 @@ TextWithPosition _$TextWithPositionFromJson(Map<String, dynamic> json) =>
       id: json['id'] as String,
       text: json['text'] as String,
       position: Position.fromJson(json['position'] as Map<String, dynamic>),
+      color: colorFromJson(json['color'] as String?),
+      fontsize: (json['fontsize'] as num?)?.toDouble(),
     );
 
 Map<String, dynamic> _$TextWithPositionToJson(TextWithPosition instance) =>
@@ -18,4 +20,6 @@ Map<String, dynamic> _$TextWithPositionToJson(TextWithPosition instance) =>
       'id': instance.id,
       'text': instance.text,
       'position': instance.position.toJson(),
+      'fontsize': instance.fontsize,
+      'color': colorToJson(instance.color),
     };

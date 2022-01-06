@@ -19,7 +19,7 @@ class AppButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => onTap,
+      onTap: () => onTap(),
       child: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),

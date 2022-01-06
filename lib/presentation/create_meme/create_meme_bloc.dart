@@ -53,7 +53,7 @@ class CreateMemeBloc {
           return;
         }
         final memeTexts = meme.texts.map((textWithPosition) {
-          return MemeText(id: textWithPosition.id, text: textWithPosition.text);
+          return MemeText.createFromWithPosition(textWithPosition);
         }).toList();
         final memeTextOffsets = meme.texts.map((textWithPosition) {
           return MemeTextOffset(
@@ -95,6 +95,8 @@ class CreateMemeBloc {
         id: memeText.id,
         text: memeText.text,
         position: position,
+        fontsize: memeText.fontSize,
+        color: memeText.color,
       );
     }).toList();
 
@@ -159,8 +161,12 @@ class CreateMemeBloc {
     if (index == -1) {
       return;
     }
+    final oldMemeText = copiedList[index];
     copiedList.removeAt(index);
-    copiedList.insert(index, MemeText(id: id, text: text));
+    copiedList.insert(
+      index,
+      oldMemeText.copyWithChangedText(text),
+    );
     memeTextSubject.add(copiedList);
   }
 
@@ -210,8 +216,7 @@ class CreateMemeBloc {
           return element.id == memeText.id;
         });
         return MemeTextWithOffset(
-          id: memeText.id,
-          text: memeText.text,
+          memeText: memeText,
           offset: memeTextOffset?.offset,
         );
       }).toList();
@@ -228,6 +233,25 @@ class CreateMemeBloc {
           onError: (error, stackTrace) =>
               print('Error in shareMemeSubscription: $error, $stackTrace'),
         );
+  }
+
+  void changeFontSettings(
+    final String textId,
+    final Color color,
+    final double fontSize,
+  ) {
+    final copiedList = [...memeTextSubject.value];
+    final index = copiedList.indexWhere((memeText) => memeText.id == textId);
+    if (index == -1) {
+      return;
+    }
+    final oldMemeText = copiedList[index];
+    copiedList.removeAt(index);
+    copiedList.insert(
+      index,
+      oldMemeText.copyWithChangedFontSettings(color, fontSize),
+    );
+    memeTextSubject.add(copiedList);
   }
 
   void dispose() {
