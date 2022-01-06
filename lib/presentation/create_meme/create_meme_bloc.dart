@@ -241,14 +241,12 @@ class CreateMemeBloc {
     final double fontSize,
   ) {
     final copiedList = [...memeTextSubject.value];
-    final index = copiedList.indexWhere((memeText) => memeText.id == textId);
-    if (index == -1) {
+    final oldMemeText = copiedList.firstWhereOrNull((memeText) => memeText.id == textId);
+    if (oldMemeText == null) {
       return;
     }
-    final oldMemeText = copiedList[index];
-    copiedList.removeAt(index);
-    copiedList.insert(
-      index,
+    copiedList.remove(oldMemeText);
+    copiedList.add(
       oldMemeText.copyWithChangedFontSettings(color, fontSize),
     );
     memeTextSubject.add(copiedList);

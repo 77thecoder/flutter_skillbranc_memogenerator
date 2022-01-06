@@ -309,52 +309,77 @@ class MemeCanvasWidget extends StatelessWidget {
         child: AspectRatio(
           aspectRatio: 1,
           child: StreamBuilder<ScreenshotController>(
-              stream: bloc.observeScreenshotController(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const SizedBox.shrink();
-                }
-                return Screenshot(
-                  controller: snapshot.requireData,
-                  child: Stack(
-                    children: [
-                      StreamBuilder<String?>(
-                          stream: bloc.observeMemePath(),
-                          builder: (context, snapshot) {
-                            final path =
-                                snapshot.hasData ? snapshot.data : null;
-                            if (path == null) {
-                              return Container(
-                                color: Colors.white,
-                              );
-                            }
-                            return Image.file(File(path));
-                          }),
-                      StreamBuilder<List<MemeTextWithOffset>>(
-                        initialData: const <MemeTextWithOffset>[],
-                        stream: bloc.observeMemeTextWithOffset(),
-                        builder: (context, snapshot) {
-                          final memeTextWithOffset = snapshot.hasData
-                              ? snapshot.data!
-                              : const <MemeTextWithOffset>[];
-                          return LayoutBuilder(builder: (context, constraints) {
-                            return Stack(
-                              children: memeTextWithOffset.map((memeText) {
-                                return DraggableMemeText(
-                                  memeTextWithOffset: memeText,
-                                  parentConstraints: constraints,
-                                );
-                              }).toList(),
-                            );
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                );
-              }),
+            stream: bloc.observeScreenshotController(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const SizedBox.shrink();
+              }
+              return Screenshot(
+                controller: snapshot.requireData,
+                child: Stack(
+                  children: const [
+                    BackgroundImage(),
+                    MemeTexts(),
+                  ],
+                ),
+              );
+            },
+          ),
         ),
       ),
+    );
+  }
+}
+
+class MemeTexts extends StatelessWidget {
+  const MemeTexts({
+    Key? key,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final bloc = Provider.of<CreateMemeBloc>(context, listen: false);
+    return StreamBuilder<List<MemeTextWithOffset>>(
+      initialData: const <MemeTextWithOffset>[],
+      stream: bloc.observeMemeTextWithOffset(),
+      builder: (context, snapshot) {
+        final memeTextWithOffset =
+            snapshot.hasData ? snapshot.data! : const <MemeTextWithOffset>[];
+        return LayoutBuilder(builder: (context, constraints) {
+          return Stack(
+            children: memeTextWithOffset.map((memeText) {
+              return DraggableMemeText(
+                key: ValueKey(memeText.memeText.id),
+                memeTextWithOffset: memeText,
+                parentConstraints: constraints,
+              );
+            }).toList(),
+          );
+        });
+      },
+    );
+  }
+}
+
+class BackgroundImage extends StatelessWidget {
+  const BackgroundImage({
+    Key? key,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final bloc = Provider.of<CreateMemeBloc>(context, listen: false);
+    return StreamBuilder<String?>(
+      stream: bloc.observeMemePath(),
+      builder: (context, snapshot) {
+        final path = snapshot.hasData ? snapshot.data : null;
+        if (path == null) {
+          return Container(
+            color: Colors.white,
+          );
+        }
+        return Image.file(File(path));
+      },
     );
   }
 }
@@ -418,7 +443,8 @@ class _DraggableMemeTextState extends State<DraggableMemeText> {
             stream: bloc.observeSelectedMemeText(),
             builder: (context, snapshot) {
               final selectedItem = snapshot.hasData ? snapshot.data : null;
-              final selected = widget.memeTextWithOffset.memeText.id == selectedItem?.id;
+              final selected =
+                  widget.memeTextWithOffset.memeText.id == selectedItem?.id;
               return MemeTextOnCanvas(
                 padding: padding,
                 selected: selected,
