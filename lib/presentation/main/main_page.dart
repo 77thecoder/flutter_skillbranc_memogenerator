@@ -6,6 +6,7 @@ import 'package:memogenerator/data/models/meme.dart';
 import 'package:memogenerator/presentation/main/main_bloc.dart';
 import 'package:memogenerator/presentation/create_meme/create_meme_page.dart';
 import 'package:memogenerator/presentation/main/memes_with_docs_path.dart';
+import 'package:memogenerator/presentation/widgets/app_button.dart';
 import 'package:memogenerator/resources/app_colors.dart';
 import 'package:provider/provider.dart';
 
@@ -29,37 +30,43 @@ class _MainPageState extends State<MainPage> {
   Widget build(BuildContext context) {
     return Provider.value(
       value: bloc,
-      child: Scaffold(
-        appBar: AppBar(
-          centerTitle: true,
-          backgroundColor: AppColors.lemon,
-          foregroundColor: AppColors.darkGrey,
-          title: Text(
-            'Мемогенератор',
-            style: GoogleFonts.seymourOne(fontSize: 24),
+      child: WillPopScope(
+        onWillPop: () async {
+          final goBack = await showConfirmationExitDialog(context);
+          return goBack ?? false;
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            centerTitle: true,
+            backgroundColor: AppColors.lemon,
+            foregroundColor: AppColors.darkGrey,
+            title: Text(
+              'Мемогенератор',
+              style: GoogleFonts.seymourOne(fontSize: 24),
+            ),
           ),
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () async {
-            final selectedMemePath = await bloc.selectMeme();
-            if (selectedMemePath == null) {
-              return;
-            }
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => CreateMemePage(
-                  selectedMemePath: selectedMemePath,
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () async {
+              final selectedMemePath = await bloc.selectMeme();
+              if (selectedMemePath == null) {
+                return;
+              }
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => CreateMemePage(
+                    selectedMemePath: selectedMemePath,
+                  ),
                 ),
-              ),
-            );
-          },
-          backgroundColor: AppColors.fuchsia,
-          icon: const Icon(Icons.add, color: Colors.white),
-          label: const Text('Создать'),
-        ),
-        backgroundColor: Colors.white,
-        body: const SafeArea(
-          child: MainPageContent(),
+              );
+            },
+            backgroundColor: AppColors.fuchsia,
+            icon: const Icon(Icons.add, color: Colors.white),
+            label: const Text('Создать'),
+          ),
+          backgroundColor: Colors.white,
+          body: const SafeArea(
+            child: MainPageContent(),
+          ),
         ),
       ),
     );
@@ -70,6 +77,35 @@ class _MainPageState extends State<MainPage> {
     bloc.dispose();
     super.dispose();
   }
+}
+
+Future<bool?> showConfirmationExitDialog(BuildContext context) async {
+  return showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('Точно хотите выйти?'),
+        content: const Text('Мемы сами себя не сделают'),
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 16),
+        actions: [
+          AppButton(
+            onTap: () {
+              Navigator.of(context).pop(false);
+            },
+            text: 'Остаться',
+            color: AppColors.darkGrey,
+          ),
+          AppButton(
+            onTap: () {
+              Navigator.of(context).pop(true);
+            },
+            text: 'Выйти',
+            color: AppColors.fuchsia,
+          ),
+        ],
+      );
+    },
+  );
 }
 
 class MainPageContent extends StatefulWidget {
